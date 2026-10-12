@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,9 +14,18 @@ app = FastAPI(
     description="Rule-based crop planning API using clearly labelled mock data.",
 )
 
+LOCAL_FRONTEND_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def get_allowed_origins() -> list[str]:
+    configured_origins = os.getenv("FIELD_SHIFT_CORS_ORIGINS", "")
+    extra_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+    return list(dict.fromkeys([*LOCAL_FRONTEND_ORIGINS, *extra_origins]))
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,4 +44,3 @@ def root() -> dict[str, str]:
         "docs": "/docs",
         "notice": "Demo / Mock Data — not a scientifically validated forecast",
     }
-

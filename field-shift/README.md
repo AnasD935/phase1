@@ -20,7 +20,7 @@ flowchart TB
     API -->|JSON response| UI
 ```
 
-The two processes are intentionally independent. The browser uses the Fetch API in `frontend/src/services/api.js`; CORS in `backend/main.py` permits the local Vite origins. There is no database, authentication, external service, AI, or server-side state.
+The two processes are intentionally independent. The browser uses the Fetch API in `frontend/src/services/api.js`; CORS in `backend/main.py` always permits local Vite origins and can add production origins from environment configuration. There is no database, authentication, external service, AI, or server-side state.
 
 ## What happens when Analyze is clicked
 
@@ -67,6 +67,49 @@ To point the client at a different backend, create `frontend/.env.local`:
 VITE_API_URL=http://localhost:8000/api
 ```
 
+If `VITE_API_URL` is not set, local development still defaults to `http://localhost:8000/api`.
+
+## GitHub Pages frontend + deployed backend configuration
+
+The Pages workflow only deploys the frontend bundle. It does **not** run FastAPI, so production must provide an explicit backend URL.
+
+### 1) Configure frontend API URL for Pages builds
+
+Set a GitHub **repository variable** (or environment variable used by the workflow) named:
+
+- `VITE_API_URL`
+
+Use the full deployed FastAPI API base URL including `/api`, for example:
+
+```text
+https://your-fastapi-host.example.com/api
+```
+
+`deploy-pages.yml` and `deploy-field-shift-frontend.yml` both pass this variable into `npm run build`. If the variable is missing (or points to localhost), the workflow fails with an actionable error instead of deploying a broken frontend.
+
+### 2) Configure backend CORS for GitHub Pages origin
+
+Set this environment variable on your FastAPI host:
+
+- `FIELD_SHIFT_CORS_ORIGINS`
+
+This is a comma-separated list of additional allowed origins (no wildcards), for example:
+
+```text
+FIELD_SHIFT_CORS_ORIGINS=https://xo5u.github.io
+```
+
+or multiple origins:
+
+```text
+FIELD_SHIFT_CORS_ORIGINS=https://xo5u.github.io,https://your-custom-domain.example.com
+```
+
+The backend always keeps local development origins:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
 ## API endpoints
 
 | Method | Path | Purpose |
@@ -111,7 +154,6 @@ field-shift/
 │   ├── schemas/            # Pydantic request/response contracts
 │   ├── services/           # transparent rules and orchestration
 │   ├── mock_data/          # replaceable in-memory datasets
-│   └── main.py             # app setup and local CORS
+│   └── main.py             # app setup and CORS origin config
 └── README.md
 ```
-
