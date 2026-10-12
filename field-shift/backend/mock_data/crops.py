@@ -1,0 +1,38 @@
+CROP_PROFILES = {
+    "chickpea": {
+        "name": "Chickpea",
+        "family": "Legume",
+        "water_need_m3_per_dunam": 32,
+        "preferred_ph": [6.0, 8.0],
+        "benefit": "Adds nitrogen and breaks cereal disease cycles",
+    },
+    "barley": {
+        "name": "Barley",
+        "family": "Cereal",
+        "water_need_m3_per_dunam": 38,
+        "preferred_ph": [6.0, 8.5],
+        "benefit": "Tolerates dry conditions and establishes quickly",
+    },
+    "tomato": {
+        "name": "Tomato",
+        "family": "Nightshade",
+        "water_need_m3_per_dunam": 62,
+        "preferred_ph": [5.8, 7.2],
+        "benefit": "Higher-value summer crop where water is sufficient",
+    },
+    "sunflower": {
+        "name": "Sunflower",
+        "family": "Aster",
+        "water_need_m3_per_dunam": 45,
+        "preferred_ph": [6.0, 7.8],
+        "benefit": "Deep rooting can improve soil structure",
+    },
+    "wheat": {
+        "name": "Wheat",
+        "family": "Cereal",
+        "water_need_m3_per_dunam": 42,
+        "preferred_ph": [6.0, 7.5],
+        "benefit": "Reliable cool-season cereal",
+    },
+}
+

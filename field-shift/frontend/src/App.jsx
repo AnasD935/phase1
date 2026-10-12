@@ -1,0 +1,168 @@
+import { useEffect, useState } from 'react'
+import { ArrowRight, Check, ChevronDown, CircleHelp, Menu, Radio, RotateCcw, Satellite, X } from 'lucide-react'
+import LocationMap from './components/LocationMap'
+import MockBadge from './components/MockBadge'
+import Results from './components/Results'
+import { analyzeFarm, checkHealth } from './services/api'
+
+const initialFarm = {
+  latitude: 32.22,
+  longitude: 35.26,
+  area_dunams: 10,
+  available_water_m3: 500,
+  previous_crop: 'wheat',
+}
+
+function Field({ label, name, value, onChange, suffix, step = 'any' }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <div className="input-wrap">
+        <input name={name} type="number" step={step} value={value} onChange={onChange} required />
+        {suffix && <em>{suffix}</em>}
+      </div>
+    </label>
+  )
+}
+
+export default function App() {
+  const [farm, setFarm] = useState(initialFarm)
+  const [result, setResult] = useState(null)
+  const [status, setStatus] = useState('checking')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => {
+    checkHealth().then(() => setStatus('online')).catch(() => setStatus('offline'))
+  }, [])
+
+  function update(event) {
+    const { name, value } = event.target
+    setFarm((current) => ({ ...current, [name]: name === 'previous_crop' ? value : Number(value) }))
+  }
+
+  function updateLocation(location) {
+    setFarm((current) => ({ ...current, ...location }))
+  }
+
+  async function submit(event) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const data = await analyzeFarm(farm)
+      setResult(data)
+      requestAnimationFrame(() => document.querySelector('.results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    } catch (requestError) {
+      setError(`${requestError.message}. Make sure FastAPI is running on port 8000.`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="app-shell">
+      <nav className="topbar">
+        <a className="brand" href="#top" aria-label="Field Shift home">
+          <span className="brand-mark"><i /><i /><i /></span>
+          <span>FIELD <b>SHIFT</b></span>
+        </a>
+        <div className={`nav-links ${mobileOpen ? 'open' : ''}`}>
+          <a className="active" href="#planner">Planner</a>
+          <a href="#architecture">Architecture</a>
+          <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer">API docs</a>
+        </div>
+        <div className={`api-status ${status}`} title="FastAPI connection status">
+          <Radio size={14} /> API {status}
+        </div>
+        <button className="menu-button" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+          {mobileOpen ? <X /> : <Menu />}
+        </button>
+      </nav>
+
+      <main id="top">
+        <header className="hero">
+          <div className="hero-kicker"><Satellite size={15} /> NASA SPACE APPS 2026 · PHASE 1</div>
+          <h1>Plan what grows <span>next.</span></h1>
+          <p>A lightweight architecture demo that turns basic field inputs into transparent, rule-based crop rotation ideas.</p>
+          <div className="flow-line" aria-label="Application data flow">
+            <span>Farm inputs</span><ArrowRight size={14} /><span>FastAPI rules</span><ArrowRight size={14} /><span>Rotation plan</span>
+          </div>
+        </header>
+
+        <div className="workspace" id="planner">
+          <aside className="planner-panel">
+            <div className="panel-heading">
+              <div><p className="eyebrow">01 · Field profile</p><h2>Tell us about the farm.</h2></div>
+              <MockBadge compact />
+            </div>
+
+            <form onSubmit={submit}>
+              <fieldset>
+                <legend><span>Location</span><small>Required</small></legend>
+                <div className="two-col">
+                  <Field label="Latitude" name="latitude" value={farm.latitude} onChange={update} step="0.01" suffix="°N" />
+                  <Field label="Longitude" name="longitude" value={farm.longitude} onChange={update} step="0.01" suffix="°E" />
+                </div>
+                <LocationMap
+                  latitude={farm.latitude}
+                  longitude={farm.longitude}
+                  onLocationChange={updateLocation}
+                />
+              </fieldset>
+
+              <fieldset>
+                <legend><span>Resources & history</span><small>Demo inputs</small></legend>
+                <div className="two-col">
+                  <Field label="Farm area" name="area_dunams" value={farm.area_dunams} onChange={update} step="0.1" suffix="dunams" />
+                  <Field label="Irrigation water" name="available_water_m3" value={farm.available_water_m3} onChange={update} step="1" suffix="m³" />
+                </div>
+                <label className="field">
+                  <span>Previously planted crop</span>
+                  <div className="select-wrap">
+                    <select name="previous_crop" value={farm.previous_crop} onChange={update}>
+                      <option value="wheat">Wheat</option>
+                      <option value="barley">Barley</option>
+                      <option value="tomato">Tomato</option>
+                      <option value="chickpea">Chickpea</option>
+                      <option value="sunflower">Sunflower</option>
+                    </select>
+                    <ChevronDown size={17} />
+                  </div>
+                </label>
+              </fieldset>
+
+              {error && <div className="error-message" role="alert"><CircleHelp size={17} />{error}</div>}
+              <button className="analyze-button" disabled={loading}>
+                {loading ? <><span className="spinner" /> Running demo rules…</> : <>Analyze field <ArrowRight size={18} /></>}
+              </button>
+              <button type="button" className="reset-button" onClick={() => { setFarm(initialFarm); setResult(null); setError('') }}>
+                <RotateCcw size={14} /> Reset example
+              </button>
+            </form>
+          </aside>
+
+          <div className="output-panel"><Results data={result} /></div>
+        </div>
+
+        <section className="architecture" id="architecture">
+          <div><p className="eyebrow">Under the hood</p><h2>Simple by design. Easy to replace.</h2></div>
+          <div className="architecture-flow">
+            <article><span>01</span><b>React client</b><p>Collects inputs and renders results.</p></article>
+            <ArrowRight />
+            <article><span>02</span><b>REST / JSON</b><p>Two POST requests through Fetch.</p></article>
+            <ArrowRight />
+            <article><span>03</span><b>FastAPI</b><p>Validates and applies clear rules.</p></article>
+            <ArrowRight />
+            <article><span>04</span><b>Mock data</b><p>Future NASA, soil and FAO adapters.</p></article>
+          </div>
+          <div className="architecture-note"><Check size={16} /> No database · No authentication · No machine learning</div>
+        </section>
+      </main>
+
+      <footer><span>Field Shift</span><p>Architecture proof of concept · NASA Space Apps 2026</p><MockBadge compact /></footer>
+    </div>
+  )
+}
+
