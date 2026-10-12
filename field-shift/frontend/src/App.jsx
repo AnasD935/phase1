@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Check, ChevronDown, CircleHelp, Menu, Radio, RotateCcw, Satellite, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, CircleHelp, Menu, Radio, RotateCcw, Satellite, SlidersHorizontal, X } from 'lucide-react'
 import LocationMap from './components/LocationMap'
 import MockBadge from './components/MockBadge'
 import Results from './components/Results'
@@ -11,6 +11,10 @@ const initialFarm = {
   area_dunams: 10,
   available_water_m3: 500,
   previous_crop: 'wheat',
+  mock_temperature_c: 20.8,
+  mock_rainfall_mm: 420,
+  mock_soil_ph: 7.1,
+  mock_organic_matter_percent: 2.7,
 }
 
 function Field({ label, name, value, onChange, suffix, step = 'any' }) {
@@ -21,6 +25,24 @@ function Field({ label, name, value, onChange, suffix, step = 'any' }) {
         <input name={name} type="number" step={step} value={value} onChange={onChange} required />
         {suffix && <em>{suffix}</em>}
       </div>
+    </label>
+  )
+}
+
+function RangeField({ label, name, value, onChange, min, max, step, suffix }) {
+  return (
+    <label className="range-field">
+      <span><b>{label}</b><output>{value}{suffix}</output></span>
+      <input
+        type="range"
+        name={name}
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        onChange={onChange}
+      />
+      <small><span>{min}{suffix}</span><span>{max}{suffix}</span></small>
     </label>
   )
 }
@@ -110,6 +132,20 @@ export default function App() {
                   longitude={farm.longitude}
                   onLocationChange={updateLocation}
                 />
+              </fieldset>
+
+              <fieldset className="scenario-controls">
+                <legend>
+                  <span><SlidersHorizontal size={14} /> Tune mock conditions</span>
+                  <small>Changes the decision</small>
+                </legend>
+                <p className="scenario-help">Adjust these demo values, then click Analyze to recalculate crops, risks, and the rotation.</p>
+                <div className="range-grid">
+                  <RangeField label="Temperature" name="mock_temperature_c" value={farm.mock_temperature_c} onChange={update} min="5" max="40" step="0.5" suffix="°C" />
+                  <RangeField label="Annual rainfall" name="mock_rainfall_mm" value={farm.mock_rainfall_mm} onChange={update} min="50" max="1200" step="10" suffix=" mm" />
+                  <RangeField label="Soil pH" name="mock_soil_ph" value={farm.mock_soil_ph} onChange={update} min="4" max="9" step="0.1" suffix="" />
+                  <RangeField label="Organic matter" name="mock_organic_matter_percent" value={farm.mock_organic_matter_percent} onChange={update} min="0.5" max="8" step="0.1" suffix="%" />
+                </div>
               </fieldset>
 
               <fieldset>

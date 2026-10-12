@@ -8,7 +8,7 @@ DISCLAIMER = (
 )
 
 
-def _crop_scores(farm: FarmInput, soil: dict) -> list[dict]:
+def _crop_scores(farm: FarmInput, soil: dict, climate: dict) -> list[dict]:
     water_per_dunam = farm.available_water_m3 / farm.area_dunams
     previous = farm.previous_crop.strip().lower()
     scores = []
@@ -28,6 +28,26 @@ def _crop_scores(farm: FarmInput, soil: dict) -> list[dict]:
         if low_ph <= soil["ph"] <= high_ph:
             score += 8
             reasons.append("mock soil pH is within the preferred range")
+        else:
+            score -= 10
+            reasons.append("mock soil pH is outside the preferred range")
+
+        low_temp, high_temp = crop["preferred_temperature_c"]
+        temperature = climate["average_temperature_c"]
+        if low_temp <= temperature <= high_temp:
+            score += 8
+            reasons.append("scenario temperature suits this crop")
+        else:
+            distance = low_temp - temperature if temperature < low_temp else temperature - high_temp
+            score -= min(20, round(distance * 2))
+            reasons.append("scenario temperature is outside the sample comfort range")
+
+        if climate["annual_rainfall_mm"] < 250:
+            score -= 8
+            reasons.append("low scenario rainfall adds pressure")
+
+        if soil["organic_matter_percent"] >= 2:
+            score += 4
 
         if key == previous:
             score -= 25
@@ -51,11 +71,31 @@ def _crop_scores(farm: FarmInput, soil: dict) -> list[dict]:
 def analyze_farm(farm: FarmInput) -> AnalysisResponse:
     climate = climate_for(farm.latitude)
     soil = soil_for(farm.longitude)
-    water_per_dunam = farm.available_water_m3 / farm.area_dunams
-    crops = _crop_scores(farm, soil)
+    if farm.mock_temperature_c is not None:
+        climate["average_temperature_c"] = farm.mock_temperature_c
+        climate["source"] = "User-adjusted demo climate scenario"
+    if farm.mock_rainfall_mm is not None:
+        climate["annual_rainfall_mm"] = farm.mock_rainfall_mm
+        climate["source"] = "User-adjusted demo climate scenario"
+    if farm.mock_soil_ph is not None:
+        soil["ph"] = farm.mock_soil_ph
+        soil["source"] = "User-adjusted demo soil scenario"
+    if farm.mock_organic_matter_percent is not None:
+        soil["organic_matter_percent"] = farm.mock_organic_matter_percent
+        soil["source"] = "User-adjusted demo soil scenario"
 
-    water_level = "high" if water_per_dunam < 32 else "medium" if water_per_dunam < 45 else "low"
-    heat_level = "medium" if climate["average_temperature_c"] > 24 else "low"
+    water_per_dunam = farm.available_water_m3 / farm.area_dunams
+    crops = _crop_scores(farm, soil, climate)
+
+    rainfall = climate["annual_rainfall_mm"]
+    if water_per_dunam < 32 and rainfall < 300:
+        water_level = "high"
+    elif water_per_dunam < 45 or rainfall < 400:
+        water_level = "medium"
+    else:
+        water_level = "low"
+    temperature = climate["average_temperature_c"]
+    heat_level = "high" if temperature > 30 else "medium" if temperature > 24 else "low"
 
     return AnalysisResponse(
         data_label="Demo / Mock Data",
@@ -68,12 +108,12 @@ def analyze_farm(farm: FarmInput) -> AnalysisResponse:
             {
                 "type": "Water pressure",
                 "level": water_level,
-                "note": f"Based on {water_per_dunam:.1f} m³ available per dunam.",
+                "note": f"Based on {water_per_dunam:.1f} m³ per dunam and {rainfall} mm scenario rainfall.",
             },
             {
                 "type": "Heat exposure",
                 "level": heat_level,
-                "note": "Inferred from the mock annual temperature profile.",
+                "note": f"Based on the {temperature:.1f}°C adjustable scenario temperature.",
             },
             {
                 "type": "Rotation fatigue",
@@ -85,18 +125,22 @@ def analyze_farm(farm: FarmInput) -> AnalysisResponse:
 
 
 def suggest_rotation(farm: FarmInput) -> RotationResponse:
-    previous = farm.previous_crop.strip().lower()
-    if previous in {"wheat", "barley"}:
-        crops = ["Chickpea", "Sunflower", "Barley"]
-    elif previous in {"tomato", "potato", "pepper"}:
-        crops = ["Barley", "Chickpea", "Sunflower"]
-    else:
-        crops = ["Chickpea", "Barley", "Tomato"]
+    climate = climate_for(farm.latitude)
+    soil = soil_for(farm.longitude)
+    if farm.mock_temperature_c is not None:
+        climate["average_temperature_c"] = farm.mock_temperature_c
+    if farm.mock_rainfall_mm is not None:
+        climate["annual_rainfall_mm"] = farm.mock_rainfall_mm
+    if farm.mock_soil_ph is not None:
+        soil["ph"] = farm.mock_soil_ph
+    if farm.mock_organic_matter_percent is not None:
+        soil["organic_matter_percent"] = farm.mock_organic_matter_percent
+    crops = [item["crop"] for item in _crop_scores(farm, soil, climate)]
 
     explanations = [
-        f"Switches away from the previous {farm.previous_crop} crop and introduces a legume.",
-        "Changes crop family and uses a deeper-rooted sample crop.",
-        "Returns to a market crop after two contrasting seasons.",
+        f"Highest current fit after moving away from the previous {farm.previous_crop} crop.",
+        "Second-ranked option under the adjustable climate, soil, and water scenario.",
+        "Third-ranked option adds variety after two contrasting seasons.",
     ]
     periods = ["Winter 2026", "Summer 2027", "Winter 2027"]
 

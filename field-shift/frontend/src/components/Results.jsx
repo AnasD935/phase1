@@ -1,9 +1,14 @@
-import { CloudSun, Droplets, FlaskConical, Info, Leaf, Sprout, ThermometerSun, TriangleAlert } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, CloudSun, Droplets, FlaskConical, Info, Leaf, Sprout, ThermometerSun, TriangleAlert } from 'lucide-react'
 import MockBadge from './MockBadge'
 
 const riskColor = { low: 'risk-low', medium: 'risk-medium', high: 'risk-high' }
 
 export default function Results({ data }) {
+  const [openSnapshot, setOpenSnapshot] = useState(null)
+  const [selectedRisk, setSelectedRisk] = useState(0)
+  const [selectedCrop, setSelectedCrop] = useState(0)
+
   if (!data) {
     return (
       <section className="empty-state" aria-live="polite">
@@ -31,8 +36,14 @@ export default function Results({ data }) {
       </div>
 
       <div className="insight-grid">
-        <article className="insight-card climate-card">
+        <button
+          type="button"
+          className={`insight-card climate-card interactive-card ${openSnapshot === 'climate' ? 'is-open' : ''}`}
+          aria-expanded={openSnapshot === 'climate'}
+          onClick={() => setOpenSnapshot(openSnapshot === 'climate' ? null : 'climate')}
+        >
           <div className="card-label"><CloudSun size={17} /> Climate snapshot</div>
+          <ChevronDown className="card-chevron" size={17} />
           <strong>{analysis.climate.average_temperature_c}°C</strong>
           <span>average temperature</span>
           <div className="mini-stats">
@@ -40,10 +51,20 @@ export default function Results({ data }) {
             <p><ThermometerSun size={15} /><b>{analysis.climate.growing_season}</b> season</p>
           </div>
           <small>{analysis.climate.source}</small>
-        </article>
+          <div className="snapshot-detail">
+            <b>How this demo value changes</b>
+            <p>This value comes from the adjustable temperature and rainfall controls. Change either control and analyze again to recalculate crop fit and risks.</p>
+          </div>
+        </button>
 
-        <article className="insight-card soil-card">
+        <button
+          type="button"
+          className={`insight-card soil-card interactive-card ${openSnapshot === 'soil' ? 'is-open' : ''}`}
+          aria-expanded={openSnapshot === 'soil'}
+          onClick={() => setOpenSnapshot(openSnapshot === 'soil' ? null : 'soil')}
+        >
           <div className="card-label"><FlaskConical size={17} /> Soil snapshot</div>
+          <ChevronDown className="card-chevron" size={17} />
           <strong>{analysis.soil.texture}</strong>
           <span>sample soil texture</span>
           <div className="soil-line">
@@ -51,17 +72,32 @@ export default function Results({ data }) {
             <div><b>{analysis.soil.organic_matter_percent}%</b><span>organic matter</span></div>
           </div>
           <small>{analysis.soil.source}</small>
-        </article>
+          <div className="snapshot-detail">
+            <b>How this demo value changes</b>
+            <p>This value comes from the adjustable pH and organic-matter controls. Change either control and analyze again to recalculate crop fit.</p>
+          </div>
+        </button>
 
         <article className="insight-card risk-card">
           <div className="card-label"><TriangleAlert size={17} /> Risk signals</div>
           <div className="risk-list">
-            {analysis.risks.map((risk) => (
-              <div key={risk.type} title={risk.note}>
+            {analysis.risks.map((risk, index) => (
+              <button
+                type="button"
+                key={risk.type}
+                className={selectedRisk === index ? 'is-selected' : ''}
+                aria-pressed={selectedRisk === index}
+                onClick={() => setSelectedRisk(index)}
+              >
                 <span className={`risk-dot ${riskColor[risk.level]}`} />
                 <p><b>{risk.type}</b><small>{risk.level} risk</small></p>
-              </div>
+                <ChevronDown size={13} />
+              </button>
             ))}
+          </div>
+          <div className="risk-explanation" aria-live="polite">
+            <Info size={14} />
+            <p><b>{analysis.risks[selectedRisk].type}</b>{analysis.risks[selectedRisk].note}</p>
           </div>
         </article>
       </div>
@@ -72,7 +108,13 @@ export default function Results({ data }) {
       </div>
       <div className="crop-list">
         {analysis.suggested_crops.map((crop, index) => (
-          <article className="crop-row" key={crop.crop}>
+          <button
+            type="button"
+            className={`crop-row ${selectedCrop === index ? 'is-selected' : ''}`}
+            key={crop.crop}
+            aria-pressed={selectedCrop === index}
+            onClick={() => setSelectedCrop(index)}
+          >
             <div className="crop-rank">0{index + 1}</div>
             <div className="crop-icon"><Leaf size={19} /></div>
             <div className="crop-copy">
@@ -82,8 +124,12 @@ export default function Results({ data }) {
             <div className="score" style={{ '--score': `${crop.score}%` }}>
               <b>{crop.score}</b><span>fit</span>
             </div>
-          </article>
+          </button>
         ))}
+      </div>
+      <div className="crop-selection" aria-live="polite">
+        <Leaf size={14} />
+        <p><b>{analysis.suggested_crops[selectedCrop].crop} selected.</b> Its demo score combines water availability, soil pH, and whether it repeats the previous crop.</p>
       </div>
 
       <div className="section-title rotation-title">
