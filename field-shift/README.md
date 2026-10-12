@@ -71,7 +71,7 @@ If `VITE_API_URL` is not set, local development still defaults to `http://localh
 
 ## GitHub Pages frontend + deployed backend configuration
 
-The Pages workflow only deploys the frontend bundle. It does **not** run FastAPI, so production must provide an explicit backend URL.
+The Pages workflow only deploys the frontend bundle. It does **not** run FastAPI. The page can be deployed before the backend is configured, but API actions will show the backend as offline until a public URL is supplied.
 
 ### 1) Configure frontend API URL for Pages builds
 
@@ -85,7 +85,7 @@ Use the full deployed FastAPI API base URL including `/api`, for example:
 https://your-fastapi-host.example.com/api
 ```
 
-`deploy-pages.yml` and `deploy-field-shift-frontend.yml` both pass this variable into `npm run build`. If the variable is missing (or points to localhost), the workflow fails with an actionable error instead of deploying a broken frontend.
+The single `.github/workflows/deploy-pages.yml` workflow passes this variable into `npm run build`. If the variable is missing, the workflow emits a warning and still deploys the frontend so the interface remains reviewable.
 
 ### 2) Configure backend CORS for GitHub Pages origin
 
