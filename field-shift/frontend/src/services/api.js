@@ -1,4 +1,11 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const LOCAL_API_URL = 'http://localhost:8000/api'
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+
+if (import.meta.env.PROD && !configuredApiUrl) {
+  throw new Error('Missing VITE_API_URL for production build/runtime. Set VITE_API_URL to your deployed FastAPI /api base URL.')
+}
+
+const API_URL = configuredApiUrl || LOCAL_API_URL
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -23,4 +30,3 @@ export async function analyzeFarm(farm) {
   ])
   return { analysis, rotation }
 }
-
